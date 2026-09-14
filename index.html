@@ -10,10 +10,10 @@
 <body>
 <div class="app">
 <aside class="side"><div class="brand"><div class="mark">N</div><div><b>NEXUS // OPS</b><small>PERSONAL COMMAND</small></div></div><nav class="nav">
-<button class="active" data-view="dashboard"><span class="icon">⌁</span>Command Center</button>
-<button data-view="tasks"><span class="icon">▣</span>My Tasks</button>
-<button data-view="cases"><span class="icon">◇</span>Amazon Cases</button>
-<button data-view="archive"><span class="icon">⌂</span>Archive</button>
+<button class="active" data-view="dashboard" onclick="showView('dashboard')"><span class="icon">⌁</span>Command Center</button>
+<button data-view="tasks" onclick="showView('tasks')"><span class="icon">▣</span>My Tasks</button>
+<button data-view="cases" onclick="showView('cases')"><span class="icon">◇</span>Amazon Cases</button>
+<button data-view="archive" onclick="showView('archive')"><span class="icon">⌂</span>Archive</button>
 </nav><div class="system"><i></i>LOCAL SYSTEM ONLINE</div></aside>
 <main class="main"><header class="top"><div class="clock" id="clock"></div><div class="actions"><input class="search" id="search" placeholder="Search  /"><button class="btn primary" id="newBtn">⚡ QUICK CAPTURE</button><button class="btn" id="notifyBtn">♢ REMINDERS</button></div></header><div class="content">
 <section id="dashboard" class="section active"><div class="head"><div><div class="eyebrow">COMMAND CENTER</div><h1 id="greeting">Good day, Nawfal</h1><div class="sub">Your operational queue, ordered by urgency.</div></div><span class="chip" id="saved">ALL CHANGES SAVED</span></div>
@@ -23,7 +23,7 @@
 <section id="cases" class="section"><div class="head"><div><div class="eyebrow">CASE TERMINAL</div><h1>Amazon Cases</h1><div class="sub">Open cases and the next response you owe.</div></div></div><div class="tablecard"><table><thead><tr><th>Case / Issue</th><th>Brand</th><th>ASIN</th><th>MP</th><th>Status</th><th>Follow-up</th><th></th></tr></thead><tbody id="caseRows"></tbody></table></div></section>
 <section id="archive" class="section"><div class="head"><div><div class="eyebrow">COLD STORAGE</div><h1>Archive</h1><div class="sub">Completed and archived records.</div></div><div style="display:flex;gap:8px"><button class="btn" id="exportBtn">EXPORT BACKUP</button><button class="btn" id="importBtn">IMPORT BACKUP</button><input type="file" id="importFile" accept=".json,application/json" hidden></div></div><div class="tablecard"><table><thead><tr><th>Brand / Issue</th><th>ASIN</th><th>MP</th><th>Type</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="archiveRows"></tbody></table></div></section>
 </div></main></div>
-<nav class="mobilebar"><button class="active" data-view="dashboard">⌁<br>Center</button><button data-view="tasks">▣<br>Tasks</button><button data-view="cases">◇<br>Cases</button><button data-view="archive">⌂<br>Archive</button></nav>
+<nav class="mobilebar"><button class="active" data-view="dashboard" onclick="showView('dashboard')">⌁<br>Center</button><button data-view="tasks" onclick="showView('tasks')">▣<br>Tasks</button><button data-view="cases" onclick="showView('cases')">◇<br>Cases</button><button data-view="archive" onclick="showView('archive')">⌂<br>Archive</button></nav>
 <div class="modal" id="modal"><div class="dialog"><div class="dialoghead"><b id="modalTitle">NEW TASK // INPUT</b><button class="close" id="close">×</button></div><form id="form"><div class="form">
 <input type="hidden" id="editId"><div class="field"><label>Type</label><select id="type"><option value="task">Task</option><option value="case">Amazon Case</option></select></div>
 <div class="field"><label>Brand *</label><input id="brand" list="brands" required placeholder="e.g. Joseph Joseph"><datalist id="brands"></datalist></div>
@@ -40,6 +40,13 @@
 </div><div class="dialogfoot"><span class="hint">CTRL/⌘ + ENTER TO SAVE</span><div><button type="button" class="btn danger" id="deleteBtn" style="display:none">Delete</button> <button class="btn primary">SAVE RECORD</button></div></div></form></div></div>
 <div class="toast" id="toast">✓ Saved</div>
 <script>
+function showView(view){
+  document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active')});
+  var target=document.getElementById(view);
+  if(target)target.classList.add('active');
+  document.querySelectorAll('[data-view]').forEach(function(x){x.classList.toggle('active',x.dataset.view===view)});
+  window.scrollTo(0,0);
+}
 (function(){
 var MP=['DE','UK','FR','IT','ES','NL','SE','PL','BE','US','CA'],key='nexus_ops_v1',items=JSON.parse(localStorage.getItem(key)||'[]'),q='';
 var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.from(document.querySelectorAll(s))};
@@ -80,7 +87,7 @@ $('#notifyBtn').onclick=async function(){if(!('Notification' in window)){alert('
 function checkReminders(){if(!('Notification' in window)||Notification.permission!=='granted')return;var sent=JSON.parse(localStorage.getItem('nexus_reminders_sent')||'{}');items.filter(function(i){return active(i)&&i.due&&i.due<=today()}).forEach(function(i){var k=i.id+'_'+today();if(!sent[k]){new Notification(overdue(i)?'Overdue task':'Task due today',{body:i.brand+' · '+i.mp+' — '+i.issue,tag:i.id});sent[k]=true}});localStorage.setItem('nexus_reminders_sent',JSON.stringify(sent))}
 if('Notification' in window&&Notification.permission==='granted'){$('#notifyBtn').textContent='✓ REMINDERS ON';setTimeout(checkReminders,1500);setInterval(checkReminders,60000)}
 $('#deleteBtn').onclick=function(){var id=$('#editId').value;if(confirm('Delete this record permanently?')){items=items.filter(function(i){return i.id!==id});save();$('#modal').classList.remove('open');render()}};
-$$('[data-view]').forEach(function(b){b.onclick=function(){$$('.section').forEach(function(x){x.classList.remove('active')});$('#'+b.dataset.view).classList.add('active');$$('[data-view]').forEach(function(x){x.classList.toggle('active',x.dataset.view===b.dataset.view)});}});
+
 document.addEventListener('keydown',function(e){if((e.key==='c'||e.key==='C')&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))openNew();if(e.key==='/'&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();$('#search').focus()}if(e.key==='Escape')$('#modal').classList.remove('open');if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&$('#modal').classList.contains('open'))$('#form').requestSubmit()});
 function tick(){var d=new Date(),h=d.getHours();$('#clock').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Casablanca',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d).toUpperCase()+' // CASABLANCA';$('#greeting').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', Nawfal'}setInterval(tick,1000);tick();
 render()
