@@ -15,7 +15,7 @@
 <button data-view="cases" onclick="showView('cases')"><span class="icon">◇</span>Amazon Cases</button>
 <button data-view="archive" onclick="showView('archive')"><span class="icon">⌂</span>Archive</button>
 </nav><div class="system"><i></i>LOCAL SYSTEM ONLINE</div></aside>
-<main class="main"><header class="top"><div class="clock" id="clock"></div><div class="actions"><input class="search" id="search" placeholder="Search  /"><button class="btn primary" id="newBtn">⚡ QUICK CAPTURE</button><button class="btn" id="notifyBtn">♢ REMINDERS</button></div></header><div class="content">
+<main class="main"><header class="top"><div class="clock" id="clock"></div><div class="actions"><button class="btn" id="cloudBtn">☁ SIGN IN</button><input class="search" id="search" placeholder="Search  /"><button class="btn primary" id="newBtn">⚡ QUICK CAPTURE</button><button class="btn" id="notifyBtn">♢ REMINDERS</button></div></header><div class="content">
 <section id="dashboard" class="section active"><div class="head"><div><div class="eyebrow">COMMAND CENTER</div><h1 id="greeting">Good day, Nawfal</h1><div class="sub">Your operational queue, ordered by urgency.</div></div><span class="chip" id="saved">ALL CHANGES SAVED</span></div>
 <div class="stats"><div class="stat red"><label>Overdue</label><strong id="sOver">0</strong></div><div class="stat amber"><label>Due Today</label><strong id="sToday">0</strong></div><div class="stat cyan"><label>Open Cases</label><strong id="sCases">0</strong></div><div class="stat green"><label>Completed</label><strong id="sDone">0</strong></div></div>
 <div class="grid"><div class="card"><div class="cardhead"><h2>⚡ PRIORITY QUEUE</h2><span class="chip">OVERDUE FIRST</span></div><div class="queue" id="queue"></div></div><div class="card"><div class="cardhead"><h2>AMAZON WATCH</h2><span class="chip">FOLLOW-UPS</span></div><div class="watch" id="watch"></div></div></div></section>
@@ -39,6 +39,11 @@
 <div class="field full caseOnly" style="display:none"><label>Log case update</label><textarea id="historyInput" placeholder="Amazon replied, documents submitted, escalation requested..."></textarea><div id="historyList" style="display:grid;gap:7px;margin-top:8px"></div></div>
 </div><div class="dialogfoot"><span class="hint">CTRL/⌘ + ENTER TO SAVE</span><div><button type="button" class="btn danger" id="deleteBtn" style="display:none">Delete</button> <button class="btn primary">SAVE RECORD</button></div></div></form></div></div>
 <div class="toast" id="toast">✓ Saved</div>
+<div class="modal" id="authModal"><div class="dialog" style="max-width:430px"><div class="dialoghead"><b>CLOUD SYNC // PRIVATE</b><button class="close" id="authClose">×</button></div><div class="form" style="grid-template-columns:1fr">
+<div class="field full"><label>Email</label><input type="email" id="authEmail" autocomplete="email" placeholder="your@email.com"></div>
+<div class="field full"><label>Password</label><input type="password" id="authPassword" autocomplete="current-password" minlength="6" placeholder="Minimum 6 characters"></div>
+<div id="authMsg" class="hint" style="min-height:18px"></div>
+</div><div class="dialogfoot"><button class="btn" id="signupBtn">CREATE ACCOUNT</button><button class="btn primary" id="signinBtn">SIGN IN & SYNC</button></div></div></div>
 <script>
 function showView(view){
   document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active')});
@@ -49,13 +54,15 @@ function showView(view){
 }
 (function(){
 var MP=['DE','UK','FR','IT','ES','NL','SE','PL','BE','US','CA'],key='nexus_ops_v1',items=JSON.parse(localStorage.getItem(key)||'[]'),q='';
-var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.from(document.querySelectorAll(s))};
+var $=function(s){return document.querySelector(s)}, $=function(s){return Array.from(document.querySelectorAll(s))};
+window.nexusGetItems=function(){return items.slice()};
+window.nexusApplyItems=function(next){items=next;localStorage.setItem(key,JSON.stringify(items));render()};
 function today(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function active(i){return !['Completed','Resolved','Archived'].includes(i.status)}
 function overdue(i){return active(i)&&i.due&&i.due<today()}
 function dueToday(i){return active(i)&&i.due===today()}
-function save(){localStorage.setItem(key,JSON.stringify(items));$('#saved').textContent='ALL CHANGES SAVED';var t=$('#toast');t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1300)}
+function save(){localStorage.setItem(key,JSON.stringify(items));window.dispatchEvent(new Event('nexus:saved'));$('#saved').textContent='ALL CHANGES SAVED';var t=$('#toast');t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1300)}
 function badge(text,cls){return '<span class="pill '+(cls||'')+'">'+esc(text)+'</span>'}
 function dateLabel(i){if(!i.due)return 'NO DATE';if(overdue(i))return 'OVERDUE · '+i.due;if(dueToday(i))return 'TODAY';return i.due}
 function sorted(list){return list.slice().sort(function(a,b){return (overdue(b)-overdue(a))||(({Critical:0,High:1,Medium:2,Low:3}[a.priority]??2)-({Critical:0,High:1,Medium:2,Low:3}[b.priority]??2))||String(a.due||'9999').localeCompare(String(b.due||'9999'))})}
@@ -91,5 +98,27 @@ $('#deleteBtn').onclick=function(){var id=$('#editId').value;if(confirm('Delete 
 document.addEventListener('keydown',function(e){if((e.key==='c'||e.key==='C')&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))openNew();if(e.key==='/'&&!/INPUT|TEXTAREA/.test(e.target.tagName)){e.preventDefault();$('#search').focus()}if(e.key==='Escape')$('#modal').classList.remove('open');if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&$('#modal').classList.contains('open'))$('#form').requestSubmit()});
 function tick(){var d=new Date(),h=d.getHours();$('#clock').textContent=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Casablanca',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d).toUpperCase()+' // CASABLANCA';$('#greeting').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', Nawfal'}setInterval(tick,1000);tick();
 render()
+})();
+</script><script>
+(function(){
+'use strict';
+var BASE='https://tyoyzanrycglucoynfvg.supabase.co';
+var API='sb_publishable_dEskZx34p5DWhkN21eBZIQ_iGavmRKQ';
+var SESSION_KEY='nexus_cloud_session_v1';
+var syncing=false,timer=null;
+function el(id){return document.getElementById(id)}
+function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
+function setSession(s){if(s)localStorage.setItem(SESSION_KEY,JSON.stringify(s));else localStorage.removeItem(SESSION_KEY)}
+function headers(token,extra){var h={'apikey':API,'Content-Type':'application/json'};if(token)h.Authorization='Bearer '+token;Object.keys(extra||{}).forEach(function(k){h[k]=extra[k]});return h}
+function status(text,bad){var b=el('cloudBtn');if(b){b.textContent=text;b.style.color=bad?'var(--red)':''}}
+async function auth(path,body){var r=await fetch(BASE+'/auth/v1/'+path,{method:'POST',headers:headers(),body:JSON.stringify(body)});var d=await r.json().catch(function(){return{}});if(!r.ok)throw new Error(d.msg||d.message||d.error_description||'Authentication failed');return d}
+async function refresh(){var s=session();if(!s||!s.refresh_token)return null;try{var d=await auth('token?grant_type=refresh_token',{refresh_token:s.refresh_token});setSession(d);return d}catch(e){setSession(null);return null}}
+async function api(path,options,retry){var s=session();if(!s)return null;options=options||{};options.headers=headers(s.access_token,options.headers);var r=await fetch(BASE+'/rest/v1/'+path,options);if(r.status===401&&retry!==false){var fresh=await refresh();if(fresh){delete options.headers.Authorization;return api(path,options,false)}}if(!r.ok){var msg=await r.text();throw new Error(msg||'Cloud request failed')}if(r.status===204)return null;var text=await r.text();return text?JSON.parse(text):null}
+async function pullAndMerge(){var s=session();if(!s)return;status('☁ LOADING');try{var rows=await api('nexus_records?select=id,payload,updated_at',{method:'GET'});var local=window.nexusGetItems?window.nexusGetItems():[];var map={};local.forEach(function(i){map[i.id]=i});(rows||[]).forEach(function(r){var remote=r.payload,old=map[r.id];if(!old||String(remote.updated||'')>String(old.updated||''))map[r.id]=remote});var merged=Object.keys(map).map(function(k){return map[k]});if(window.nexusApplyItems)window.nexusApplyItems(merged);await pushAll();status('☁ SYNCED')}catch(e){console.error(e);status('⚠ SYNC ERROR',true)}}
+async function pushAll(){if(syncing||!session())return;syncing=true;status('☁ SYNCING');try{var s=session(),user=s.user;await api('nexus_records?user_id=eq.'+encodeURIComponent(user.id),{method:'DELETE',headers:{Prefer:'return=minimal'}});var records=window.nexusGetItems?window.nexusGetItems():[];if(records.length){var rows=records.map(function(i){return{id:i.id,user_id:user.id,payload:i,updated_at:i.updated||new Date().toISOString()}});await api('nexus_records',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)})}status('☁ SYNCED')}catch(e){console.error(e);status('⚠ SYNC ERROR',true)}finally{syncing=false}}
+async function signIn(){var email=el('authEmail').value.trim(),password=el('authPassword').value;if(!email||password.length<6){el('authMsg').textContent='Enter your email and a password of at least 6 characters.';return}el('authMsg').textContent='CONNECTING...';try{var d=await auth('token?grant_type=password',{email:email,password:password});setSession(d);el('authModal').classList.remove('open');el('authMsg').textContent='';await pullAndMerge()}catch(e){el('authMsg').textContent=e.message}}
+async function signUp(){var email=el('authEmail').value.trim(),password=el('authPassword').value;if(!email||password.length<6){el('authMsg').textContent='Enter your email and a password of at least 6 characters.';return}el('authMsg').textContent='CREATING ACCOUNT...';try{var d=await auth('signup?redirect_to='+encodeURIComponent(location.origin),{email:email,password:password});if(d.access_token){setSession(d);el('authModal').classList.remove('open');await pullAndMerge()}else el('authMsg').textContent='Account created. Confirm the email, then return and sign in.'}catch(e){el('authMsg').textContent=e.message}}
+function init(){var btn=el('cloudBtn');if(!btn)return;btn.onclick=function(){if(session()){if(confirm('Sign out of cloud sync?')){setSession(null);status('☁ SIGN IN')}}else el('authModal').classList.add('open')};el('authClose').onclick=function(){el('authModal').classList.remove('open')};el('signinBtn').onclick=signIn;el('signupBtn').onclick=signUp;window.addEventListener('nexus:saved',function(){clearTimeout(timer);timer=setTimeout(pushAll,350)});if(session())pullAndMerge();else status('☁ SIGN IN')}
+try{init()}catch(e){console.error(e);status('☁ LOCAL MODE',true)}
 })();
 </script></body></html>
